@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Verify GrapheneOS security hardening is active"""
-import subprocess, re
+"""Check if device has GrapheneOS hardening features enabled"""
+import subprocess
 
 def adb(cmd):
     r = subprocess.run(['adb', 'shell'] + cmd.split(), capture_output=True, text=True)
     return r.stdout.strip()
 
-checks = [
-    ("SELinux enforcing", "getenforce", "Enforcing"),
-    ("MTE enabled", "cat /proc/cpuinfo | grep mte", "mte"),
-    ("Exploit mitigations", "cat /proc/sys/kernel/unprivileged_userns_clone", "0"),
-    ("SMACK LSM", "cat /proc/lsm", "smack"),
-]
+checks = {
+    'SELinux enforcing': ('getenforce', ['Enforcing']),
+    'exec-shield': ('cat /proc/sys/kernel/exec-shield', ['1']),
+    'ASLR enabled': ('cat /proc/sys/kernel/randomize_va_space', ['2']),
+    'dmesg restrictions': ('cat /proc/sys/kernel/dmesg_restrict', ['1']),
+}
 
-for label, cmd, expect in checks:
-    out = adb(cmd)
-    ok = expect.lower() in out.lower()
-    print(f"{'✅' if ok else '❌'} {label}: {out[:40]}")
+print("GrapheneOS Security Checks:")
+for name, (cmd, expected) in checks.items():
+    result = adb(cmd)
+    status = '✓' if any(e in result for e in expected) else '✗'
+    print(f"  {status} {name}: {result}")
